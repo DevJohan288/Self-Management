@@ -5,11 +5,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Configuraciones</title>
-    <!-- Libraries -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <!-- Para gráficas -->
+
     <!-- CSS Styles -->
     <link rel="stylesheet" href="/Self-Management/public/css/styles.css">
     <link rel="stylesheet" href="/Self-Management/public/css/normalize.css">
+    <!-- Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <!-- Para gráficas -->
+
     <!-- Favicon/images -->
     <link id="favicon" rel="icon" type="image/png" href="/Self-Management/public/images/short_lg-dark.png">
     <!-- JS Scripts -->
@@ -19,11 +21,11 @@
 <body>
     <!--Include componenet: Sidebar -->
     <?php include $_SERVER['DOCUMENT_ROOT'] . '/Self-Management/app/views/shared/sidebar_client.php'; ?>
-    <main>
+    <main class="config-main">
         <h3>Configuraciones</h3>
         <div class="separator">
             <div class="container">
-            <h3>Información Personal</h3>
+                <h3>Información Personal</h3>
                 <label for="nombre">Nombre completo</label>
                 <input type="text" id="nombre" placeholder="Tu nombre completo">
 

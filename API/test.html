@@ -3,20 +3,22 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Probar Login API</title>
+    <title>Login con API</title>
 </head>
 
 <body>
-    <h2>Probar Login (API)</h2>
+    <h2>Login con API (Prueba)</h2>
     <form id="loginForm">
-        <label>Correo:</label><br>
+        <label for="correo">Correo:</label><br>
         <input type="email" name="correo" required><br>
-        <label>Contraseña:</label><br>
+
+        <label for="password">Contraseña:</label><br>
         <input type="password" name="password" required><br><br>
+
         <button type="submit">Iniciar sesión</button>
     </form>
 
-    <pre id="response"></pre>
+    <p id="error" style="color:red;"></p>
 
     <script>
         document.getElementById('loginForm').addEventListener('submit', function (e) {
@@ -32,10 +34,22 @@
             })
                 .then(res => res.json())
                 .then(data => {
-                    document.getElementById('response').textContent = JSON.stringify(data, null, 2);
+                    if (data.user && data.user.rol) {
+                        // Redirigir según rol
+                        if (data.user.rol == 1) {
+                            window.location.href = '/Self-Management/app/views/admin/admin_home.php';
+                        } else {
+                            window.location.href = '/Self-Management/app/views/client/client_home.php';
+                        }
+                    } else if (data.error) {
+                        document.getElementById('error').textContent = data.error;
+                    } else {
+                        document.getElementById('error').textContent = "Respuesta inesperada del servidor.";
+                    }
                 })
                 .catch(err => {
-                    document.getElementById('response').textContent = 'Error: ' + err;
+                    document.getElementById('error').textContent = "Error al conectar con el servidor.";
+                    console.error(err);
                 });
         });
     </script>

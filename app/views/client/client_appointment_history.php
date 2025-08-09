@@ -98,6 +98,7 @@
                     <option value="menor-precio">Finalizada</option>
                 </select>
             </div>
+
             <table class="user-table">
                 <thead>
                     <tr>

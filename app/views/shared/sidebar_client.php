@@ -76,7 +76,7 @@
 
             <!--Item 4-->
             <li>
-                <a href="/Self-Management/app/views/client/client_my_vehicles.php">
+                <a href="/Self-Management/index.php?controller=vehicle&action=listarTodos">
                     <img src="/Self-Management/public/images/icon/icon-table.svg" alt="Home" height="24px" width="24px">
                     <span>Mis Vehiculos</span>
                 </a>

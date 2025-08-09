@@ -37,7 +37,7 @@ body {
   list-style: none;
 }
 
-#sidebar>ul>li:first-child {
+#sidebar > ul > li:first-child {
   display: flex;
   justify-content: flex-end;
   margin-bottom: 16px;
@@ -96,7 +96,7 @@ body {
   grid-template-rows: 0fr;
   transition: 300ms ease-in-out;
 
-  >div {
+  > div {
     overflow: hidden;
   }
 }
@@ -175,7 +175,7 @@ main p {
     top: unset;
     bottom: 0;
 
-    >ul {
+    > ul {
       padding: 0;
       display: grid;
       grid-auto-columns: 60px;
@@ -215,7 +215,7 @@ main p {
       display: flex;
       justify-content: center;
 
-      >div {
+      > div {
         overflow-x: auto;
       }
 
@@ -620,7 +620,6 @@ a {
   border-color: var(--accent-clr);
   outline: none;
   box-shadow: 0 0 5px var(--accent-clr);
-
 }
 
 .stat-card {

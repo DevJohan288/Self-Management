@@ -22,44 +22,43 @@ class AppointmentController
             $fecha = $_POST['fecha'] ?? null;
             $hora = $_POST['hora'] ?? null;
             $cliente = $_POST['cliente'] ?? null;
+            $servicio = $_POST['servicio'] ?? null;
+            $vehiculo = $_POST['vehiculo'] ?? null;
+            $comentario = $_POST['comentario'] ?? '';
 
-            if ($fecha && $hora && $cliente) {
-                $this->model->create($fecha, $hora, $cliente);
+            if ($fecha && $hora && $cliente && $servicio && $vehiculo) {
+                $this->model->create($fecha, $hora, $cliente, $servicio, $vehiculo, $comentario);
 
-                // 🔄 Redirige al historial para mostrar la cita recién creada
+                // Redirige al historial de citas
                 header('Location: /Self-Management/index.php?controller=appointment&action=history');
                 exit;
             } else {
-                $error = "Todos los campos son obligatorios.";
-                $appointments = $this->model->getAll(); // Para seguir mostrando los datos existentes
-                include __DIR__ . '/../views/client/client_appointment_history.php';
+                $error = "Todos los campos obligatorios deben completarse.";
+                $appointments = $this->model->getAll();
+                include __DIR__ . '/../views/client/client_my_appointments.php'; // Show the form with error
             }
-        } else {
-            // Si es GET, solo muestra el historial y el formulario
-            $appointments = $this->model->getAll();
-            include __DIR__ . '/../views/client/client_appointment_history.php';
         }
     }
 
     public function history()
     {
         $appointments = $this->model->getAll();
-        include __DIR__ . '/../views/client/client_appointment_history.php';
+        include __DIR__ . '/../views/client/client_my_appointments.php'; // Assuming this view lists all appointments
     }
 
 
-    public function edit()
-    {
-        $id = $_GET['id'] ?? null;
+    // public function edit()
+    // {
+    //     $id = $_GET['id'] ?? null;
 
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $this->model->update($id, $_POST['fecha'], $_POST['hora'], $_POST['cliente']);
-            header('Location: /Self-Management/index.php?controller=appointment&action=index');
-        } else {
-            $appointment = $this->model->getById($id);
-            include __DIR__ . '/../views/admin/edit_appointment.php';
-        }
-    }
+    //     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    //         $this->model->update($id, $_POST['fecha'], $_POST['hora'], $_POST['cliente']);
+    //         header('Location: /Self-Management/index.php?controller=appointment&action=index');
+    //     } else {
+    //         $appointment = $this->model->getById($id);
+    //         include __DIR__ . '/../views/admin/edit_appointment.php';
+    //     }
+    // }
 
     public function delete()
     {

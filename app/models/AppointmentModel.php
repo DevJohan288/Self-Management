@@ -21,12 +21,13 @@ class AppointmentModel
         return $stmt->get_result()->fetch_assoc();
     }
 
-    public function create($fecha, $hora, $cliente)
+    public function create($fecha, $hora, $cliente, $servicio, $vehiculo, $comentario)
     {
-        $stmt = $this->db->prepare("INSERT INTO citas (fecha, hora, cliente) VALUES (?, ?, ?)");
-        $stmt->bind_param("sss", $fecha, $hora, $cliente);
+        $stmt = $this->db->prepare("INSERT INTO citas (fecha, hora, cliente, servicio, vehiculo, comentario) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("ssssss", $fecha, $hora, $cliente, $servicio, $vehiculo, $comentario);
         return $stmt->execute();
     }
+
 
     public function update($id, $fecha, $hora, $cliente)
     {
