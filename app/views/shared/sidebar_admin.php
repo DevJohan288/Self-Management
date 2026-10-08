@@ -1,6 +1,11 @@
+<?php
+// Inicia la sesión solo si no está iniciada para evitar warnings
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,16 +15,15 @@
     <!-- Libreries -->
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
 </head>
 
 <body>
     <nav id="sidebar">
         <ul>
             <!--Item menu-->
-            <li<?php session_start(); ?>
+            <li>
                 <span class="logo">
-                Bienvenido, <?php echo htmlspecialchars($_SESSION['nombre']); ?>
+                    Bienvenido, <?php echo isset($_SESSION['nombre']) ? htmlspecialchars($_SESSION['nombre']) : 'Usuario'; ?>
                 </span>
 
                 <button onclick=toggleSidebar() id="toggle-btn">
@@ -65,13 +69,6 @@
                 </li>
                 <!--Item 4-->
                 <li>
-                    <a href="/Self-Management/app/views/admin/admin_dates.php">
-                        <img src="/Self-Management/public/images/icon/icon-table.svg" alt="Home" height="24px" width="24px">
-                        <span>Gestion de citas</span>
-                    </a>
-                </li>
-                <!--Item 4-->
-                <li>
                     <a href="/Self-Management/app/views/admin/admin_services.php">
                         <img src="/Self-Management/public/images/icon/icon-table.svg" alt="Home" height="24px" width="24px">
                         <span>Gestion de servicios</span>
@@ -79,16 +76,9 @@
                 </li>
                 <!--Item 4-->
                 <li>
-                    <a href="/Self-Management/app/views/admin/admin_pay.php">
+                    <a href="/Self-Management/app/views/admin/admin_dates.php">
                         <img src="/Self-Management/public/images/icon/icon-table.svg" alt="Home" height="24px" width="24px">
-                        <span>Pagos y facturacion</span>
-                    </a>
-                </li>
-                <!--Item 4-->
-                <li>
-                    <a href="/Self-Management/app/views/admin/admin_calendar.php">
-                        <img src="/Self-Management/public/images/icon/icon_calendar.svg" alt="Home" height="24px" width="24px">
-                        <span>Calendarios</span>
+                        <span>Citas</span>
                     </a>
                 </li>
                 <!--Item 8-->
@@ -118,7 +108,7 @@
                 </li>
                 <!--Item 9-->
                 <li>
-                    <a href="" id="logout-btnd">
+                    <a href="#" id="logout-btn">
                         <img src="/Self-Management/public/images/icon/icon-logout.svg" alt="Home" height="24px" width="24px">
                         <span>Cerrar sesion</span>
                     </a>

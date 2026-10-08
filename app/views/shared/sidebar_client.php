@@ -1,3 +1,9 @@
+<?php
+// Inicia la sesión solo si no está iniciada
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -17,12 +23,10 @@
         <ul>
             <!--Item menu-->
             <li>
-                <!--Item menu-->
-                <li<?php session_start(); ?>
-                    <span class="logo">
-                    Bienvenido, <?php echo htmlspecialchars($_SESSION['nombre']); ?>
-                    </span>
-                    <button onclick=toggleSidebar() id="toggle-btn">
+                <span class="logo">
+                    Bienvenido, <?php echo isset($_SESSION['nombre']) ? htmlspecialchars($_SESSION['nombre']) : 'Usuario'; ?>
+                </span>
+                <button onclick=toggleSidebar() id="toggle-btn">
                         <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px"
                             fill="#e8eaed">
                             <path
@@ -90,12 +94,12 @@
                 </a>
             </li>
             <!--Item 8: /Self-Management/app/controllers/AuthController.php?action=logout-->
-            <li>
-                <a href="" id="logout-btn">
-                    <img src="/Self-Management/public/images/icon/icon-logout.svg" alt="Home" height="24px" width="24px">
-                    <span>Cerrar sesion</span>
-                </a>
-            </li>
+              <li>
+                    <a href="#" id="logout-btn">
+                        <img src="/Self-Management/public/images/icon/icon-logout.svg" alt="Home" height="24px" width="24px">
+                        <span>Cerrar sesion</span>
+                    </a>
+                </li>
         </ul>
 
     </nav>
@@ -134,3 +138,4 @@
     </script>
     <script src="/Self-Management/public/js/logout.js"></script>
 </body>
+</html>

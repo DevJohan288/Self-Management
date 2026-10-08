@@ -1,3 +1,43 @@
+<?php
+// Cargar configuración central (ruta absoluta desde document root)
+require_once $_SERVER['DOCUMENT_ROOT'] . '/Self-Management/config/init.php';
+
+// Validar rol de administrador
+require_once $_SERVER['DOCUMENT_ROOT'] . '/Self-Management/app/includes/auth.php';
+requireRole('admin');
+// ==========================================
+// Obtener mecánicos (rol = 2 = empleado/mecánico) con estadísticas desde `citas.mecanico_id`
+$query = "
+    SELECT 
+        u.id, 
+        u.nombre, 
+        u.correo, 
+        u.telefono,
+        COUNT(c.id) AS total_citas,
+        SUM(CASE WHEN c.estado = 'Completada' THEN 1 ELSE 0 END) AS citas_completadas
+    FROM user u
+    LEFT JOIN citas c ON u.id = c.mecanico_id
+    WHERE u.rol = 2
+    GROUP BY u.id, u.nombre, u.correo, u.telefono
+    ORDER BY u.nombre ASC
+";
+$mecanicos = [];
+$res = mysqli_query($conexion, $query);
+if ($res) {
+    while ($row = mysqli_fetch_assoc($res)) {
+        // Asegurar valores numéricos
+        $row['total_citas'] = intval($row['total_citas'] ?? 0);
+        $row['citas_completadas'] = intval($row['citas_completadas'] ?? 0);
+        $mecanicos[] = $row;
+    }
+    mysqli_free_result($res);
+} else {
+    // En desarrollo registrar el error si es necesario
+    // error_log('Error al obtener mecanicos: ' . mysqli_error($conexion));
+    $mecanicos = [];
+}
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -29,6 +69,11 @@
                 </button>
             </div>
         </div>
+
+                    
+            <div class="card">
+                <p><strong>Nota:</strong> Para agregar un nuevo mecánico, ve a la sección de <a href="usuarios.php">Usuarios</a> y crea un usuario con rol "Mecánico".</p>
+            </div>
 
         <!-- Modal con formulario -->
         <div class="modal fade" id="formModal" tabindex="-1" aria-labelledby="formModalLabel" aria-hidden="true">
@@ -63,6 +108,32 @@
                         </div>
                     </form>
                 </div>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+                <?php if (count($mecanicos) > 0): ?>
+                    <?php foreach ($mecanicos as $m): ?>
+                        <div class="card">
+                            <h3>🔧 <?php echo htmlspecialchars($m['nombre']); ?></h3>
+                            <p><strong>Correo:</strong> <?php echo htmlspecialchars($m['correo']); ?></p>
+                            <p><strong>Teléfono:</strong> <?php echo htmlspecialchars($m['telefono']); ?></p>
+                            <hr>
+                            <div class="stat-small">
+                                <span class="stat-label">Total Citas:</span>
+                                <span class="stat-value"><?php echo $m['total_citas']; ?></span>
+                            </div>
+                            <div class="stat-small">
+                                <span class="stat-label">Completadas:</span>
+                                <span class="stat-value"><?php echo $m['citas_completadas']; ?></span>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <div class="card">
+                        <p>No hay mecánicos registrados.</p>
+                    </div>
+                <?php endif; ?>
             </div>
         </div>
 
@@ -106,6 +177,10 @@
                 </tbody>
             </table>
         </div>
+
+        <div class="user-info">
+                <span><?php echo $_SESSION['user_name']; ?> (Admin)</span>
+            </div>
     </main>
     <!-- JS para el formulario del modal -->
     <script>

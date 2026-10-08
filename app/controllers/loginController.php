@@ -16,7 +16,7 @@ class LoginController
 
         if ($user) {
             session_start();
-            $_SESSION['user_id'] = $user['id'];
+            $_SESSION['id'] = $user['id'];
             $_SESSION['nombre'] = $user['nombre'];
             $_SESSION['rol'] = $user['rol'];
 
@@ -27,34 +27,25 @@ class LoginController
 
         return false;
     }
-    public function validar()
-    {
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $correo = $_POST['correo'] ?? '';
-            $password = $_POST['password'] ?? '';
+    // public function validar()
+    // {
+    //     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    //         $correo = $_POST['correo'] ?? '';
+    //         $password = $_POST['password'] ?? '';
 
-            $ruta = $this->login($correo, $password);
+    //         $ruta = $this->login($correo, $password);
 
-            if ($ruta) {
-                header("Location: $ruta");
-                exit;
-            } else {
-                session_start();
-                $_SESSION['error'] = "Correo o contraseña incorrectos.";
-                header("Location: /Self-Management/app/views/auth/login.php"); // ← redirigir al formulario
-                exit;
-            }
-        } else {
-            echo "Método no permitido.";
-        }
-    }
-    public function logout()
-    {
-        session_start();
-        session_unset();  // Limpia todas las variables de sesión
-        session_destroy();  // Destruye la sesión
-
-        header("Location: /Self-Management/app/views/auth/login.php");
-        exit;
-    }
+    //         if ($ruta) {
+    //             header("Location: $ruta");
+    //             exit;
+    //         } else {
+    //             session_start();
+    //             $_SESSION['error'] = "Correo o contraseña incorrectos.";
+    //             header("Location: /Self-Management/app/views/auth/login.php"); // ← redirigir al formulario
+    //             exit;
+    //         }
+    //     } else {
+    //         echo "Método no permitido.";
+    //     }
+    // }
 }

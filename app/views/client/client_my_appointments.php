@@ -1,3 +1,97 @@
+<?php
+// Cargar configuración central (ruta absoluta desde document root)
+require_once $_SERVER['DOCUMENT_ROOT'] . '/Self-Management/config/init.php';
+require_once $_SERVER['DOCUMENT_ROOT'] . '/Self-Management/app/includes/auth.php';
+require_once $_SERVER['DOCUMENT_ROOT'] . '/Self-Management/app/includes/funtions.php';
+requireRole('cliente');
+
+$mensaje = '';
+$userId = $_SESSION['user_id'] ?? $_SESSION['id'] ?? null;
+$userName = $_SESSION['user_nombre'] ?? $_SESSION['user_name'] ?? $_SESSION['nombre'] ?? 'Invitado';
+
+// Detectar si la tabla citas tiene columnas relacionales
+$has_cliente_id = ($conexion && mysqli_num_rows(mysqli_query($conexion, "SHOW COLUMNS FROM citas LIKE 'cliente_id'")) > 0);
+$has_mecanico_id = ($conexion && mysqli_num_rows(mysqli_query($conexion, "SHOW COLUMNS FROM citas LIKE 'mecanico_id'")) > 0);
+$has_servicio_id = ($conexion && mysqli_num_rows(mysqli_query($conexion, "SHOW COLUMNS FROM citas LIKE 'servicio_id'")) > 0);
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $servicioId = intval($_POST['servicio_id'] ?? 0);
+    $mecanicoId = intval($_POST['mecanico_id'] ?? 0) ?: null;
+    $fecha = sanitize($_POST['fecha'] ?? '');
+    $hora = sanitize($_POST['hora'] ?? '');
+    $vehiculoMarca = sanitize($_POST['vehiculo_marca'] ?? '');
+    $vehiculoModelo = sanitize($_POST['vehiculo_modelo'] ?? '');
+    $vehiculoPlaca = sanitize($_POST['vehiculo_placa'] ?? '');
+    $notas = sanitize($_POST['notas'] ?? '');
+
+    if ($conexion) {
+        // Resolve servicio name from servicios table
+        $servicioNombre = '';
+        if ($servicioId) {
+            $rs = mysqli_query($conexion, "SELECT nombre FROM servicios WHERE id = " . intval($servicioId));
+            if ($rs && $r = mysqli_fetch_assoc($rs)) $servicioNombre = $r['nombre'];
+        }
+
+        $vehiculoStr = trim("$vehiculoMarca $vehiculoModelo - $vehiculoPlaca");
+
+        // Insert into citas using prepared statement
+        if ($has_cliente_id && $has_mecanico_id && $has_servicio_id) {
+            // Use relational columns
+            $stmt = mysqli_prepare($conexion, 
+                "INSERT INTO citas (cliente_id, mecanico_id, servicio_id, fecha, hora, vehiculo, comentario, estado) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+            if ($stmt) {
+                $estado = 'Pendiente';
+                mysqli_stmt_bind_param($stmt, 'iiisssss', $userId, $mecanicoId, $servicioId, $fecha, $hora, $vehiculoStr, $notas, $estado);
+                if (mysqli_stmt_execute($stmt)) {
+                    $mensaje = showSuccess('Cita agendada correctamente. En breve un mecánico será asignado.');
+                } else {
+                    $mensaje = showError('Error al agendar la cita: ' . mysqli_error($conexion));
+                }
+                mysqli_stmt_close($stmt);
+            }
+        } else {
+            // Use text columns (current DB schema)
+            $stmt = mysqli_prepare($conexion, 
+                "INSERT INTO citas (cliente, servicio, fecha, hora, vehiculo, comentario, estado) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?)");
+            if ($stmt) {
+                $estado = 'Pendiente';
+                mysqli_stmt_bind_param($stmt, 'sssssss', $userName, $servicioNombre, $fecha, $hora, $vehiculoStr, $notas, $estado);
+                if (mysqli_stmt_execute($stmt)) {
+                    $mensaje = showSuccess('Cita agendada correctamente. En breve un mecánico será asignado.');
+                } else {
+                    $mensaje = showError('Error al agendar la cita: ' . mysqli_error($conexion));
+                }
+                mysqli_stmt_close($stmt);
+            }
+        }
+    } else {
+        $mensaje = showError('Error: No hay conexión a la base de datos');
+    }
+}
+
+// Fetch servicios and mecanicos for form selects
+$servicios = [];
+$mecanicos = [];
+if ($conexion) {
+    // Get active services
+    $rs = mysqli_query($conexion, "SELECT * FROM servicios ORDER BY nombre");
+    if ($rs) while ($r = mysqli_fetch_assoc($rs)) $servicios[] = $r;
+
+    // Get mechanics (users with rol = 2 [empleado])
+    $rs = mysqli_query($conexion, "SELECT id, nombre FROM user WHERE rol = 2");
+    if ($rs) while ($r = mysqli_fetch_assoc($rs)) $mecanicos[] = $r;
+}
+
+// Fetch user's vehicles
+$vehiculos = [];
+if ($conexion && $userId) {
+    $rs = mysqli_query($conexion, "SELECT * FROM vehiculos WHERE cliente_id = " . intval($userId));
+    if ($rs) while ($r = mysqli_fetch_assoc($rs)) $vehiculos[] = $r;
+}
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -81,50 +175,121 @@
         <div class="modal fade" id="formModal" tabindex="-1" aria-labelledby="formModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-custom">
                 <div class="modal-content">
-                    <form id="popupForm" action="/self-management/index.php?controller=appointment&action=create" method="POST">
-                        <!-- Servicio -->
-                        <div class="mb-3">
-                            <label for="servicio">Servicio:</label>
-                            <select id="servicio" name="servicio" required>
-                                <option value="">-- Selecciona un servicio --</option>
-                                <option value="aceite">Cambio de aceite - 30min</option>
-                                <option value="frenos">Revisión de frenos - 45min</option>
-                                <option value="motor">Diagnóstico de motor - 60min</option>
-                            </select>
+                    <form id="popupForm" method="POST">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="formModalLabel">Agendar Nueva Cita</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                         </div>
+                        
+                        <div class="modal-body">
+                            <?php if ($mensaje): ?>
+                                <?php echo $mensaje; ?>
+                            <?php endif; ?>
 
-                        <!-- Vehículo -->
-                        <div class="mb-3">
-                            <label for="vehiculo">Vehículo:</label>
-                            <input type="text" id="vehiculo" name="vehiculo" placeholder="Ej: Toyota Corolla 2020" required />
+                            <!-- Servicio -->
+                            <div class="mb-3">
+                                <label for="servicio_id">Servicio: *</label>
+                                <select id="servicio_id" name="servicio_id" class="form-select" required>
+                                    <option value="">-- Selecciona un servicio --</option>
+                                    <?php foreach ($servicios as $servicio): ?>
+                                        <option value="<?php echo htmlspecialchars($servicio['id']); ?>">
+                                            <?php echo htmlspecialchars($servicio['nombre']); ?> - 
+                                            $<?php echo number_format($servicio['precio'], 2); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+
+                            <!-- Mecánico (opcional) -->
+                            <div class="mb-3">
+                                <label for="mecanico_id">Mecánico: (opcional)</label>
+                                <select id="mecanico_id" name="mecanico_id" class="form-select">
+                                    <option value="">El taller asignará un mecánico</option>
+                                    <?php foreach ($mecanicos as $mecanico): ?>
+                                        <option value="<?php echo htmlspecialchars($mecanico['id']); ?>">
+                                            <?php echo htmlspecialchars($mecanico['nombre']); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+
+                            <!-- Fecha y Hora -->
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="fecha">Fecha: *</label>
+                                    <input type="date" id="fecha" name="fecha" class="form-control" 
+                                           required min="<?php echo date('Y-m-d'); ?>" />
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="hora">Hora: *</label>
+                                    <input type="time" id="hora" name="hora" class="form-control" required />
+                                </div>
+                            </div>
+
+                            <!-- Información del Vehículo -->
+                            <h6 class="mt-4">Información del Vehículo</h6>
+                            <?php if (!empty($vehiculos)): ?>
+                            <div class="mb-3">
+                                <label for="vehiculo_select">Seleccionar vehículo registrado:</label>
+                                <select id="vehiculo_select" class="form-select" onchange="fillVehicleInfo()">
+                                    <option value="">Nuevo vehículo</option>
+                                    <?php foreach ($vehiculos as $v): ?>
+                                        <option value="<?php echo htmlspecialchars(json_encode([
+                                            'marca' => $v['marca'],
+                                            'modelo' => $v['modelo'],
+                                            'placa' => $v['placa']
+                                        ])); ?>">
+                                            <?php echo htmlspecialchars("{$v['marca']} {$v['modelo']} - {$v['placa']}"); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <?php endif; ?>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="vehiculo_marca">Marca: *</label>
+                                    <input type="text" id="vehiculo_marca" name="vehiculo_marca" 
+                                           class="form-control" required placeholder="Ej: Toyota" />
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="vehiculo_modelo">Modelo: *</label>
+                                    <input type="text" id="vehiculo_modelo" name="vehiculo_modelo" 
+                                           class="form-control" required placeholder="Ej: Corolla" />
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="vehiculo_placa">Placa: *</label>
+                                <input type="text" id="vehiculo_placa" name="vehiculo_placa" 
+                                       class="form-control" required placeholder="Ej: ABC-123" />
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="notas">Notas adicionales:</label>
+                                <textarea id="notas" name="notas" class="form-control" rows="3" 
+                                        placeholder="Describe el problema o solicitud especial..."></textarea>
+                            </div>
                         </div>
-
-                        <!-- Fecha -->
-                        <div class="mb-3">
-                            <label for="fecha">Fecha:</label>
-                            <input type="date" id="fecha" name="fecha" required min="<?= date('Y-m-d'); ?>" />
-                        </div>
-
-                        <!-- Hora -->
-                        <div class="mb-3">
-                            <label for="hora">Hora:</label>
-                            <input type="time" id="hora" name="hora" required />
-                        </div>
-
-                        <!-- Comentario -->
-                        <div class="mb-3">
-                            <label for="comentario" class="form-label">Comentario adicional (opcional):</label>
-                            <textarea id="comentario" name="comentario" rows="3" placeholder="Ej: Quiero revisar un ruido al frenar."></textarea>
-                        </div>
-
-                        <!-- Cliente oculto -->
-                        <input type="hidden" name="cliente" value="<?= $_SESSION['nombre'] ?? 'Invitado'; ?>" />
 
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                            <button type="submit" class="btn btn-primary">Crear</button>
+                            <button type="submit" class="btn btn-primary">Agendar Cita</button>
                         </div>
                     </form>
+
+                    <script>
+                    function fillVehicleInfo() {
+                        const select = document.getElementById('vehiculo_select');
+                        if (!select) return;
+                        
+                        const vehicleInfo = select.value ? JSON.parse(select.value) : null;
+                        
+                        document.getElementById('vehiculo_marca').value = vehicleInfo ? vehicleInfo.marca : '';
+                        document.getElementById('vehiculo_modelo').value = vehicleInfo ? vehicleInfo.modelo : '';
+                        document.getElementById('vehiculo_placa').value = vehicleInfo ? vehicleInfo.placa : '';
+                    }
+                    </script>
                 </div>
             </div>
         </div>
@@ -230,7 +395,93 @@
                 </tbody>
             </table>
         </div>
+
+        <div class="content">
+            <h1>Agendar Nueva Cita</h1>
+            
+            <?php echo $mensaje; ?>
+            
+            <div class="card">
+                <form method="POST">
+                    <div class="form-group">
+                        <label>Servicio *</label>
+                        <select name="servicio_id" required>
+                            <option value="">Selecciona un servicio...</option>
+                            <?php foreach ($servicios as $servicio): ?>
+                                <option value="<?php echo $servicio['id']; ?>">
+                                    <?php echo $servicio['nombre']; ?> - $<?php echo number_format($servicio['precio'], 2); ?> (<?php echo $servicio['duracion']; ?> min)
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Mecánico (opcional)</label>
+                        <select name="mecanico_id">
+                            <option value="">El taller asignará un mecánico</option>
+                            <?php foreach ($mecanicos as $mecanico): ?>
+                                <option value="<?php echo $mecanico['id']; ?>"><?php echo $mecanico['nombre']; ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Fecha *</label>
+                            <input type="date" name="fecha" required min="<?php echo date('Y-m-d'); ?>">
+                        </div>
+                        <div class="form-group">
+                            <label>Hora *</label>
+                            <input type="time" name="hora" required>
+                        </div>
+                    </div>
+
+                    <h3>Información del Vehículo</h3>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Marca *</label>
+                            <input type="text" name="vehiculo_marca" required placeholder="Ej: Toyota, Ford, Honda">
+                        </div>
+                        <div class="form-group">
+                            <label>Modelo *</label>
+                            <input type="text" name="vehiculo_modelo" required placeholder="Ej: Corolla, Fiesta, Civic">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Placa *</label>
+                        <input type="text" name="vehiculo_placa" required placeholder="Ej: ABC-123">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Notas adicionales</label>
+                        <textarea name="notas" rows="4" placeholder="Describe el problema o solicitud especial..."></textarea>
+                    </div>
+
+                    <div class="form-actions">
+                        <a href="dashboard.php" class="btn btn-secondary">Cancelar</a>
+                        <button type="submit" class="btn btn-primary">Agendar Cita</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="card">
+                <h3>Servicios Disponibles</h3>
+                <div class="services-grid">
+                    <?php foreach ($servicios as $servicio): ?>
+                    <div class="service-item">
+                        <h4><?php echo $servicio['nombre']; ?></h4>
+                        <p><?php echo $servicio['descripcion']; ?></p>
+                        <p><strong>Precio:</strong> $<?php echo number_format($servicio['precio'], 2); ?></p>
+                        <p><strong>Duración:</strong> <?php echo $servicio['duracion']; ?> minutos</p>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        </div>
     </main>
+    
 </body>
 
 </html>
